@@ -1,6 +1,6 @@
-import { Controller, Get, Post, Delete, Param, Body, Query } from '@nestjs/common';
+import { Controller, Get, Post, Delete, Param, Body, Query, BadRequestException, NotFoundException } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiBody, ApiQuery } from '@nestjs/swagger';
-import { ChannelService } from './channel.service';
+import { SessionService } from '../session/session.service';
 import { SubscribeChannelDto } from './dto/subscribe-channel.dto';
 import { RequireRole } from '../auth/decorators/auth.decorators';
 import { ApiKeyRole } from '../auth/entities/api-key.entity';
@@ -8,7 +8,15 @@ import { ApiKeyRole } from '../auth/entities/api-key.entity';
 @ApiTags('channels')
 @Controller('sessions/:sessionId/channels')
 export class ChannelController {
-  constructor(private readonly channelService: ChannelService) {}
+  constructor(private readonly sessionService: SessionService) {}
+
+  private getEngine(sessionId: string) {
+    const engine = this.sessionService.getEngine(sessionId);
+    if (!engine) {
+      throw new BadRequestException('Session is not started');
+    }
+    return engine;
+  }
 
   @Get()
   @ApiOperation({ summary: 'Get all subscribed channels/newsletters' })
@@ -19,7 +27,7 @@ export class ChannelController {
   })
   @ApiResponse({ status: 400, description: 'Session not ready' })
   async findAll(@Param('sessionId') sessionId: string) {
-    return this.channelService.getSubscribedChannels(sessionId);
+    return this.getEngine(sessionId).getSubscribedChannels();
   }
 
   @Get(':channelId')
@@ -32,7 +40,11 @@ export class ChannelController {
   })
   @ApiResponse({ status: 404, description: 'Channel not found' })
   async findOne(@Param('sessionId') sessionId: string, @Param('channelId') channelId: string) {
-    return this.channelService.getChannelById(sessionId, channelId);
+    const channel = await this.getEngine(sessionId).getChannelById(channelId);
+    if (!channel) {
+      throw new NotFoundException(`Channel ${channelId} not found`);
+    }
+    return channel;
   }
 
   @Get(':channelId/messages')
@@ -49,7 +61,7 @@ export class ChannelController {
     @Param('channelId') channelId: string,
     @Query('limit') limit?: string,
   ) {
-    return this.channelService.getChannelMessages(sessionId, channelId, limit ? parseInt(limit, 10) : undefined);
+    return this.getEngine(sessionId).getChannelMessages(channelId, limit ? parseInt(limit, 10) : undefined);
   }
 
   @Post('subscribe')
@@ -74,7 +86,7 @@ export class ChannelController {
     description: 'Successfully subscribed to channel',
   })
   async subscribe(@Param('sessionId') sessionId: string, @Body() body: SubscribeChannelDto) {
-    return this.channelService.subscribeToChannel(sessionId, body.inviteCode);
+    return this.getEngine(sessionId).subscribeToChannel(body.inviteCode);
   }
 
   @Delete(':channelId')
@@ -87,7 +99,7 @@ export class ChannelController {
     description: 'Successfully unsubscribed from channel',
   })
   async unsubscribe(@Param('sessionId') sessionId: string, @Param('channelId') channelId: string) {
-    await this.channelService.unsubscribeFromChannel(sessionId, channelId);
+    await this.getEngine(sessionId).unsubscribeFromChannel(channelId);
     return { success: true };
   }
 }

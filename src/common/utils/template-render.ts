@@ -13,7 +13,7 @@
  * syntax. See issue #69.
  */
 
-const PLACEHOLDER_PATTERN = /\{\{\s*([\w.-]+)\s*\}\}/g;
+const PLACEHOLDER_PATTERN = /\{\{?\s*([\w.-]+)\s*\}\}?/g;
 
 /**
  * Render a template body by replacing `{{key}}` placeholders with `vars[key]`.

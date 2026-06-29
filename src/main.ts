@@ -121,6 +121,13 @@ async function bootstrap() {
   // Disable Nest's default body parser so we can set an explicit size cap below.
   const app = await NestFactory.create(AppModule, { bodyParser: false });
 
+  // Configure Express native 'trust proxy' if trusted proxies are defined
+  const configService = app.get(ConfigService);
+  const trustedProxies = configService.get<string[]>('security.trustedProxies') ?? [];
+  if (trustedProxies.length > 0) {
+    app.getHttpAdapter().getInstance().set('trust proxy', trustedProxies);
+  }
+
   // Cap request body size (DoS hardening). Media sends carry base64 in the JSON body,
   // so the default is generous; tune with BODY_SIZE_LIMIT.
   const bodyLimit = resolveBodyLimit(process.env.BODY_SIZE_LIMIT);
@@ -231,7 +238,7 @@ async function bootstrap() {
   // @bull-board/nestjs as raw Express middleware that the global ApiKeyGuard
   // does not cover; registering this before app.listen() ensures it runs ahead
   // of the Bull Board router. Requires a valid ADMIN API key.
-  const bullBoardAuth = new BullBoardAuthMiddleware(app.get(AuthService), app.get(ConfigService));
+  const bullBoardAuth = new BullBoardAuthMiddleware(app.get(AuthService));
   app.use('/api/admin/queues', (req: Request, res: Response, next: NextFunction) => {
     void bullBoardAuth.use(req, res, next);
   });

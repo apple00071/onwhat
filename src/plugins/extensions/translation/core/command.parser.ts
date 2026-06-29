@@ -1,5 +1,5 @@
 // src/modules/translation/core/command.parser.ts
-import { ParsedCommand, CommandName, CommandTarget } from './ports';
+import { ParsedCommand, CommandName, CommandTarget } from './translation.coordinator';
 
 const COMMANDS: ReadonlySet<string> = new Set<CommandName>([
   'help',

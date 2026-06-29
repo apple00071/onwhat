@@ -1,5 +1,5 @@
 import { PluginConfigStore } from './plugin-config.store';
-import { GroupState } from './core/ports';
+import { GroupState } from './core/translation.coordinator';
 
 function makeStorage() {
   const data = new Map<string, unknown>();

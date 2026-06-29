@@ -1,4 +1,4 @@
-import { ChatGateway } from './core/ports';
+import { ChatGateway } from './core/translation.coordinator';
 import { PluginMessagingCapability, PluginEngineReadCapability } from '../../../core/plugins';
 
 /**

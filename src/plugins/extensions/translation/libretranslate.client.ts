@@ -1,5 +1,5 @@
 // src/modules/translation/adapters/libretranslate.client.ts
-import { Translator, DetectResult } from './core/ports';
+import { Translator, DetectResult } from './core/translation.coordinator';
 import { createLogger } from '../../../common/services/logger.service';
 import { assertSafeFetchUrl, isSsrfProtectionEnabled, SsrfBlockedError } from '../../../common/security/ssrf-guard';
 

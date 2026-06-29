@@ -49,13 +49,9 @@ describe('ApiKeyGuard', () => {
   let guard: ApiKeyGuard;
   let authService: jest.Mocked<Partial<AuthService>>;
   let reflector: jest.Mocked<Reflector>;
-  let configService: jest.Mocked<Partial<ConfigService>>;
 
-  function buildGuard(trustedProxies: string[] = []): ApiKeyGuard {
-    configService = {
-      get: jest.fn().mockReturnValue(trustedProxies),
-    };
-    return new ApiKeyGuard(authService as AuthService, reflector, configService as ConfigService);
+  function buildGuard(): ApiKeyGuard {
+    return new ApiKeyGuard(authService as AuthService, reflector);
   }
 
   beforeEach(() => {
@@ -154,64 +150,15 @@ describe('ApiKeyGuard', () => {
     expect(authService.validateApiKey).toHaveBeenCalledWith('key', '127.0.0.1', 'sess-123');
   });
 
-  it('ignores X-Forwarded-For by default (no trusted proxies) to prevent IP spoofing', async () => {
+  it('uses request.ip directly as client IP for validateApiKey', async () => {
     reflector.getAllAndOverride.mockReturnValueOnce(false).mockReturnValueOnce(undefined);
 
     const apiKey = createMockApiKey();
     (authService.validateApiKey as jest.Mock).mockResolvedValue(apiKey);
 
-    // Attacker forges X-Forwarded-For; the direct socket IP must win.
-    const context = createMockContext({
-      'x-api-key': 'key',
-      'x-forwarded-for': '203.0.113.50, 70.41.3.18',
-    });
+    const context = createMockContext({ 'x-api-key': 'key' }, {}, '198.51.100.42');
     await guard.canActivate(context);
 
-    expect(authService.validateApiKey).toHaveBeenCalledWith('key', '127.0.0.1', undefined);
-  });
-
-  it('uses the rightmost untrusted hop when the request comes from a trusted proxy', async () => {
-    guard = buildGuard(['10.0.0.0/8']);
-    reflector.getAllAndOverride.mockReturnValueOnce(false).mockReturnValueOnce(undefined);
-
-    const apiKey = createMockApiKey();
-    (authService.validateApiKey as jest.Mock).mockResolvedValue(apiKey);
-
-    // Direct peer 10.0.0.1 is a trusted proxy; XFF = [real client, inner proxy].
-    const context = createMockContext(
-      { 'x-api-key': 'key', 'x-forwarded-for': '203.0.113.50, 10.0.0.5' },
-      {},
-      '10.0.0.1',
-    );
-    await guard.canActivate(context);
-
-    expect(authService.validateApiKey).toHaveBeenCalledWith('key', '203.0.113.50', undefined);
-  });
-
-  it('ignores X-Forwarded-For when the direct peer is not a trusted proxy', async () => {
-    guard = buildGuard(['10.0.0.0/8']);
-    reflector.getAllAndOverride.mockReturnValueOnce(false).mockReturnValueOnce(undefined);
-
-    const apiKey = createMockApiKey();
-    (authService.validateApiKey as jest.Mock).mockResolvedValue(apiKey);
-
-    // Attacker connects directly (203.0.113.99) and forges a trusted-looking XFF.
-    const context = createMockContext({ 'x-api-key': 'key', 'x-forwarded-for': '10.0.0.5' }, {}, '203.0.113.99');
-    await guard.canActivate(context);
-
-    expect(authService.validateApiKey).toHaveBeenCalledWith('key', '203.0.113.99', undefined);
-  });
-
-  it('normalizes an IPv4-mapped IPv6 proxy address (e.g. ::ffff:10.0.0.1)', async () => {
-    guard = buildGuard(['10.0.0.0/8']);
-    reflector.getAllAndOverride.mockReturnValueOnce(false).mockReturnValueOnce(undefined);
-
-    const apiKey = createMockApiKey();
-    (authService.validateApiKey as jest.Mock).mockResolvedValue(apiKey);
-
-    const context = createMockContext({ 'x-api-key': 'key', 'x-forwarded-for': '203.0.113.50' }, {}, '::ffff:10.0.0.1');
-    await guard.canActivate(context);
-
-    expect(authService.validateApiKey).toHaveBeenCalledWith('key', '203.0.113.50', undefined);
+    expect(authService.validateApiKey).toHaveBeenCalledWith('key', '198.51.100.42', undefined);
   });
 });

@@ -1,6 +1,6 @@
-import { Controller, Get, Post, Delete, Param, Body } from '@nestjs/common';
+import { Controller, Get, Post, Delete, Param, Body, BadRequestException, NotFoundException } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiBody } from '@nestjs/swagger';
-import { LabelService } from './label.service';
+import { SessionService } from '../session/session.service';
 import { AddLabelDto } from './dto/add-label.dto';
 import { RequireRole } from '../auth/decorators/auth.decorators';
 import { ApiKeyRole } from '../auth/entities/api-key.entity';
@@ -8,7 +8,15 @@ import { ApiKeyRole } from '../auth/entities/api-key.entity';
 @ApiTags('labels')
 @Controller('sessions/:sessionId/labels')
 export class LabelController {
-  constructor(private readonly labelService: LabelService) {}
+  constructor(private readonly sessionService: SessionService) {}
+
+  private getEngine(sessionId: string) {
+    const engine = this.sessionService.getEngine(sessionId);
+    if (!engine) {
+      throw new BadRequestException('Session is not started');
+    }
+    return engine;
+  }
 
   @Get()
   @ApiOperation({ summary: 'Get all labels (WhatsApp Business only)' })
@@ -20,7 +28,7 @@ export class LabelController {
   @ApiResponse({ status: 400, description: 'Session not ready or not a business account' })
   @ApiResponse({ status: 404, description: 'Session not found' })
   async findAll(@Param('sessionId') sessionId: string) {
-    return this.labelService.getLabels(sessionId);
+    return this.getEngine(sessionId).getLabels();
   }
 
   @Get(':labelId')
@@ -33,7 +41,11 @@ export class LabelController {
   })
   @ApiResponse({ status: 404, description: 'Label not found' })
   async findOne(@Param('sessionId') sessionId: string, @Param('labelId') labelId: string) {
-    return this.labelService.getLabelById(sessionId, labelId);
+    const label = await this.getEngine(sessionId).getLabelById(labelId);
+    if (!label) {
+      throw new NotFoundException(`Label ${labelId} not found`);
+    }
+    return label;
   }
 
   @Get('chat/:chatId')
@@ -45,7 +57,7 @@ export class LabelController {
     description: 'List of labels for the chat',
   })
   async getChatLabels(@Param('sessionId') sessionId: string, @Param('chatId') chatId: string) {
-    return this.labelService.getChatLabels(sessionId, chatId);
+    return this.getEngine(sessionId).getChatLabels(chatId);
   }
 
   @Post('chat/:chatId')
@@ -71,7 +83,7 @@ export class LabelController {
     @Param('chatId') chatId: string,
     @Body() body: AddLabelDto,
   ) {
-    await this.labelService.addLabelToChat(sessionId, chatId, body.labelId);
+    await this.getEngine(sessionId).addLabelToChat(chatId, body.labelId);
     return { success: true };
   }
 
@@ -90,7 +102,7 @@ export class LabelController {
     @Param('chatId') chatId: string,
     @Param('labelId') labelId: string,
   ) {
-    await this.labelService.removeLabelFromChat(sessionId, chatId, labelId);
+    await this.getEngine(sessionId).removeLabelFromChat(chatId, labelId);
     return { success: true };
   }
 }

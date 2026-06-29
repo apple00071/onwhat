@@ -1,4 +1,4 @@
-import { ConfigStore, GroupState } from './core/ports';
+import { ConfigStore, GroupState } from './core/translation.coordinator';
 import { PluginStorage } from '../../../core/plugins';
 
 /**

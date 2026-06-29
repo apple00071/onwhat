@@ -1,6 +1,6 @@
 // src/modules/translation/core/translation.coordinator.spec.ts
 import { TranslationCoordinator, CoordinatorOptions } from './translation.coordinator';
-import { ChatGateway, ConfigStore, GroupState, InboundMessage, Translator, TranslationLogger } from './ports';
+import { ChatGateway, ConfigStore, GroupState, InboundMessage, Translator, TranslationLogger } from './translation.coordinator';
 
 const OPTS: CoordinatorOptions = { prefix: '/tr', minLength: 2, maxLength: 2000, denyReply: false };
 

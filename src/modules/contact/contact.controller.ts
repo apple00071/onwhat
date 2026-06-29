@@ -1,13 +1,21 @@
-import { Controller, Get, Post, Delete, Param, HttpCode, HttpStatus } from '@nestjs/common';
+import { Controller, Get, Post, Delete, Param, HttpCode, HttpStatus, BadRequestException, NotFoundException } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiParam } from '@nestjs/swagger';
-import { ContactService } from './contact.service';
+import { SessionService } from '../session/session.service';
 import { RequireRole } from '../auth/decorators/auth.decorators';
 import { ApiKeyRole } from '../auth/entities/api-key.entity';
 
 @ApiTags('contacts')
 @Controller('sessions/:sessionId/contacts')
 export class ContactController {
-  constructor(private readonly contactService: ContactService) {}
+  constructor(private readonly sessionService: SessionService) {}
+
+  private getEngine(sessionId: string) {
+    const engine = this.sessionService.getEngine(sessionId);
+    if (!engine) {
+      throw new BadRequestException('Session is not started');
+    }
+    return engine;
+  }
 
   @Get()
   @ApiOperation({ summary: 'Get all contacts for a session' })
@@ -19,7 +27,7 @@ export class ContactController {
   @ApiResponse({ status: 400, description: 'Session not ready' })
   @ApiResponse({ status: 404, description: 'Session not found' })
   async findAll(@Param('sessionId') sessionId: string) {
-    return this.contactService.getContacts(sessionId);
+    return this.getEngine(sessionId).getContacts();
   }
 
   @Get(':contactId')
@@ -32,7 +40,11 @@ export class ContactController {
   })
   @ApiResponse({ status: 404, description: 'Contact not found' })
   async findOne(@Param('sessionId') sessionId: string, @Param('contactId') contactId: string) {
-    return this.contactService.getContactById(sessionId, contactId);
+    const contact = await this.getEngine(sessionId).getContactById(contactId);
+    if (!contact) {
+      throw new NotFoundException(`Contact ${contactId} not found`);
+    }
+    return contact;
   }
 
   @Get('check/:number')
@@ -44,9 +56,7 @@ export class ContactController {
     description: 'Number existence check result',
   })
   async checkNumber(@Param('sessionId') sessionId: string, @Param('number') number: string) {
-    // The engine returns the canonical chat id in its native format; we don't build the JID here
-    // (decoupled from the whatsapp-web.js `@c.us` scheme).
-    const whatsappId = await this.contactService.getNumberId(sessionId, number);
+    const whatsappId = await this.getEngine(sessionId).getNumberId(number);
     return {
       number,
       exists: whatsappId !== null,
@@ -65,7 +75,7 @@ export class ContactController {
     description: 'Profile picture URL',
   })
   async getProfilePicture(@Param('sessionId') sessionId: string, @Param('contactId') contactId: string) {
-    const url = await this.contactService.getProfilePicture(sessionId, contactId);
+    const url = await this.getEngine(sessionId).getProfilePicture(contactId);
     return { url };
   }
 
@@ -78,7 +88,7 @@ export class ContactController {
     description: 'Resolved phone number (MSISDN digits), or null when the engine cannot map it',
   })
   async resolvePhone(@Param('sessionId') sessionId: string, @Param('contactId') contactId: string) {
-    const phone = await this.contactService.resolveContactPhone(sessionId, contactId);
+    const phone = await this.getEngine(sessionId).resolveContactPhone(contactId);
     return { contactId, phone };
   }
 
@@ -93,7 +103,7 @@ export class ContactController {
     description: 'Contact blocked',
   })
   async blockContact(@Param('sessionId') sessionId: string, @Param('contactId') contactId: string) {
-    await this.contactService.blockContact(sessionId, contactId);
+    await this.getEngine(sessionId).blockContact(contactId);
     return { success: true, message: 'Contact blocked' };
   }
 
@@ -107,7 +117,7 @@ export class ContactController {
     description: 'Contact unblocked',
   })
   async unblockContact(@Param('sessionId') sessionId: string, @Param('contactId') contactId: string) {
-    await this.contactService.unblockContact(sessionId, contactId);
+    await this.getEngine(sessionId).unblockContact(contactId);
     return { success: true, message: 'Contact unblocked' };
   }
 }

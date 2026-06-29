@@ -1,5 +1,5 @@
 // src/modules/translation/core/reply.formatter.ts
-import { Translation, GroupState } from './ports';
+import { Translation, GroupState } from './translation.coordinator';
 
 const FLAGS: Record<string, string> = {
   en: '🇬🇧',

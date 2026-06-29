@@ -1,6 +1,6 @@
 // src/modules/translation/core/reply.formatter.spec.ts
 import { formatCombinedReply, buildHelpText, formatStatus } from './reply.formatter';
-import { GroupState } from './ports';
+import { GroupState } from './translation.coordinator';
 
 describe('reply.formatter', () => {
   it('formats one line per translation with an uppercased code label', () => {

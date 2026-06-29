@@ -10,7 +10,7 @@ import { PluginContext, IPlugin } from '../../../core/plugins';
 import { HookContext, HookResult } from '../../../core/hooks';
 import { IncomingMessage } from '../../../engine/interfaces/whatsapp-engine.interface';
 import { TranslationCoordinator, CoordinatorOptions } from './core/translation.coordinator';
-import { InboundMessage, TranslationLogger } from './core/ports';
+import { InboundMessage, TranslationLogger } from './core/translation.coordinator';
 import { LibreTranslateClient } from './libretranslate.client';
 import { PluginChatGateway } from './plugin-chat.gateway';
 import { PluginConfigStore } from './plugin-config.store';

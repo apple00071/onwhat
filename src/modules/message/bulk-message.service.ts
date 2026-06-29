@@ -15,6 +15,7 @@ import { SessionService } from '../session/session.service';
 import { MessageService } from './message.service';
 import { SsrfBlockedError } from '../../common/security/ssrf-guard';
 import { IWhatsAppEngine, MessageResult } from '../../engine/interfaces/whatsapp-engine.interface';
+import { renderTemplate } from '../../common/utils/template-render';
 
 // Type definitions for bulk message content
 interface BulkMessageContent {
@@ -304,14 +305,8 @@ export class BulkMessageService implements OnApplicationBootstrap {
   private applyVariables(content: BulkMessageContent, variables?: Record<string, string>): BulkMessageContent {
     if (!variables) return content;
 
-    // NOTE: This single-brace `{name}` convention differs from the shared
-    // server-side template renderer (`renderTemplate` in
-    // common/utils/template-render.ts) which uses double-brace `{{name}}`
-    // placeholders. The two conventions should be reconciled onto the shared
-    // helper in a follow-up so the gateway exposes one consistent templating
-    // syntax. See issue #69.
     const replaceVars = (str: string): string => {
-      return str.replace(/\{(\w+)\}/g, (_, key: string) => variables[key] || `{${key}}`);
+      return renderTemplate(str, variables);
     };
 
     const processValue = (value: unknown): unknown => {
